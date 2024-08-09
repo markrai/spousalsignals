@@ -1,4 +1,14 @@
-// Function to fetch and display HRV data
+const USER_COLORS = {
+    user1: '#3e95cd',
+    user2: '#ff6347'
+};
+
+const POINT_RADIUS = 5;
+const Y_AXIS_STEP_SIZE = 10;
+
+const chartInstances = {}; 
+
+
 async function fetchAndDisplayData(user) {
     try {
         console.log(`Fetching HRV data for ${user}`);
@@ -10,19 +20,26 @@ async function fetchAndDisplayData(user) {
         const data = await response.json();
         console.log(`HRV data for ${user}:`, data);
 
-        // Check if data is available and sufficient
-        const days = document.getElementById('daysSelector').value;
+     
+        const daysSelector = document.getElementById('daysSelector');
+        if (!daysSelector) {
+            throw new Error('Days selector element not found.');
+        }
+        
+        const days = daysSelector.value;
         if (data.hrv && data.hrv.length >= days) {
             const filteredData = data.hrv.slice(-days);
 
-            // Extract labels (dates) and values (HRV readings)
+     
             const labels = filteredData.map(entry => {
                 const date = new Date(entry.dateTime);
-                return date.toLocaleDateString('en-US', { weekday: 'short' }); // Show day of the week
+     
+                const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+                return utcDate.toLocaleDateString('en-US', { weekday: 'short' });
             });
             const values = filteredData.map(entry => entry.value.dailyRmssd);
 
-            // Update the chart with the new data
+     
             updateChart(user, labels, values);
         } else {
             console.error(`Insufficient data for ${user}.`);
@@ -34,41 +51,52 @@ async function fetchAndDisplayData(user) {
     }
 }
 
-// Function to update the Chart.js chart with new data
+
+
 function updateChart(user, labels, values) {
     const chartId = `hrvChart${user}`;
-    const ctx = document.getElementById(chartId).getContext('2d');
+    const ctx = document.getElementById(chartId)?.getContext('2d');
 
-    // Check if chart already exists, destroy it before creating a new one
-    if (window[`${chartId}Instance`]) {
-        window[`${chartId}Instance`].destroy();
+    if (!ctx) {
+        console.error(`Chart context for ${chartId} not found.`);
+        return;
     }
 
-    // Create the chart with the fetched data
-    window[`${chartId}Instance`] = new Chart(ctx, {
+
+    if (chartInstances[chartId]) {
+        chartInstances[chartId].destroy();
+    }
+
+
+    chartInstances[chartId] = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
                 label: `HRV Data for ${user}`,
                 data: values,
-                borderColor: user === 'user1' ? '#3e95cd' : '#ff6347', // Different colors for each user
+                borderColor: USER_COLORS[user], 
                 fill: false,
-                pointBackgroundColor: '#000', // Black dots
-                pointRadius: 5, // Size of dots
+                pointBackgroundColor: '#000', 
+                pointRadius: POINT_RADIUS, 
             }]
         },
         options: {
+            layout: {
+                padding: {
+                    right: 20,
+                }
+            },
             plugins: {
                 datalabels: {
-                    color: '#fff', // White text color
-                    backgroundColor: '#000', // Black background
+                    color: '#fff',
+                    backgroundColor: '#000', 
                     borderRadius: 4,
                     font: {
                         weight: 'bold'
                     },
                     formatter: function(value) {
-                        return value.toFixed(1); // Format the label text
+                        return value.toFixed(1); 
                     }
                 }
             },
@@ -76,28 +104,33 @@ function updateChart(user, labels, values) {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        stepSize: 10, // Ensure y-axis increments by 10
+                        stepSize: Y_AXIS_STEP_SIZE, 
                     }
                 }
             }
         },
-        plugins: [ChartDataLabels] // Enable the datalabels plugin
+        plugins: [ChartDataLabels] 
     });
 }
 
-// Function to display an error message on the page
+
+
 function displayError(message) {
     const errorContainer = document.getElementById('errorContainer');
-    errorContainer.innerHTML = `<p class="error-message">${message}</p>`;
+    if (errorContainer) {
+        errorContainer.innerHTML = `<p class="error-message">${message}</p>`;
+    } else {
+        console.error('Error container element not found.');
+    }
 }
 
-// Event listener for dropdown change to update the charts
-document.getElementById('daysSelector').addEventListener('change', () => {
+
+document.getElementById('daysSelector')?.addEventListener('change', () => {
     fetchAndDisplayData('user1');
     fetchAndDisplayData('user2');
 });
 
-// Fetch initial data for both users when the page loads
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayData('user1');
     fetchAndDisplayData('user2');

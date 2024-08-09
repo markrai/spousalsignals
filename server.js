@@ -6,28 +6,28 @@ const fs = require('fs');
 
 const app = express();
 
-// Fitbit credentials for User 1
+
 const CLIENT_ID_USER1 = '';
 const CLIENT_SECRET_USER1 = '';
-const REDIRECT_URI_USER1 = 'https://s/callback/user1';
+const REDIRECT_URI_USER1 = '';
 
-// Fitbit credentials for User 2
+
 const CLIENT_ID_USER2 = '';
 const CLIENT_SECRET_USER2 = '';
-const REDIRECT_URI_USER2 = 'https://s/callback/user2';
+const REDIRECT_URI_USER2 = '';
 
-let tokenStore = {}; // Object to store tokens
+let tokenStore = {}; 
 let cachedData = {};
 
-// Serve static files like CSS and JS
+
 app.use(express.static(path.join(__dirname)));
 
-// Serve the index.html file
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// OAuth login route (used for initial setup)
+
 app.get('/login/:user', (req, res) => {
     const user = req.params.user;
     const clientId = user === 'user1' ? CLIENT_ID_USER1 : CLIENT_ID_USER2;
@@ -38,7 +38,7 @@ app.get('/login/:user', (req, res) => {
     res.redirect(authUrl);
 });
 
-// OAuth callback route
+
 app.get('/callback/:user', async (req, res) => {
     const user = req.params.user;
     const code = req.query.code;
@@ -64,19 +64,19 @@ app.get('/callback/:user', async (req, res) => {
 
         const { access_token, refresh_token, expires_in } = response.data;
 
-        // Store tokens and expiration time
+
         tokenStore[user] = {
             accessToken: access_token,
             refreshToken: refresh_token,
-            expiry: Date.now() + expires_in * 1000, // expires_in is in seconds
+            expiry: Date.now() + expires_in * 1000, 
         };
 
-        // Optionally, write to a JSON file or database
+        
         fs.writeFileSync('tokenStore.json', JSON.stringify(tokenStore));
 
         console.log(`Access token for ${user} stored.`);
 
-        // Fetch and cache HRV data after token is stored
+        
         await fetchAndCacheHRVData(user);
 
         res.send('Authentication successful! You can now access Fitbit data.');
@@ -86,7 +86,7 @@ app.get('/callback/:user', async (req, res) => {
     }
 });
 
-// Function to refresh the access token
+
 async function refreshAccessToken(user) {
     const clientId = user === 'user1' ? CLIENT_ID_USER1 : CLIENT_ID_USER2;
     const clientSecret = user === 'user1' ? CLIENT_SECRET_USER1 : CLIENT_SECRET_USER2;
@@ -110,14 +110,14 @@ async function refreshAccessToken(user) {
 
         const { access_token, refresh_token, expires_in } = response.data;
 
-        // Update stored tokens
+
         tokenStore[user] = {
             accessToken: access_token,
             refreshToken: refresh_token,
             expiry: Date.now() + expires_in * 1000,
         };
 
-        // Optionally, write to a JSON file or database
+
         fs.writeFileSync('tokenStore.json', JSON.stringify(tokenStore));
 
         console.log(`Access token for ${user} refreshed.`);
@@ -135,7 +135,7 @@ async function fetchAndCacheHRVData(user) {
             return;
         }
 
-        // Check if the token has expired
+
         if (Date.now() > tokenStore[user].expiry) {
             console.log(`Access token for ${user} has expired. Refreshing token...`);
             await refreshAccessToken(user);
@@ -145,7 +145,10 @@ async function fetchAndCacheHRVData(user) {
         console.log(`Fetching HRV data for ${user} with token: ${accessToken}`);
 
         const today = new Date().toISOString().split('T')[0];
-        const startDate = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0];
+
+        const startDateObj = new Date();
+        startDateObj.setDate(startDateObj.getDate() - 30);
+        const startDate = startDateObj.toISOString().split('T')[0];
 
         const response = await axios.get(`https://api.fitbit.com/1/user/-/hrv/date/${startDate}/${today}.json`, {
             headers: {
@@ -160,7 +163,8 @@ async function fetchAndCacheHRVData(user) {
     }
 }
 
-// Endpoint to serve cached HRV data
+
+
 app.get('/hrv/:user', (req, res) => {
     console.log(`Received request for HRV data of ${req.params.user}`);
     const user = req.params.user;
@@ -171,21 +175,21 @@ app.get('/hrv/:user', (req, res) => {
     }
 });
 
-// Schedule periodic data fetching and caching (every hour)
+
 setInterval(() => {
     fetchAndCacheHRVData('user1');
     fetchAndCacheHRVData('user2');
 }, 3600 * 1000);
 
-// Start the server
+
 app.listen(8080, () => {
     console.log('Server started on port 8080');
-    // Fetch data immediately on startup
+
     fetchAndCacheHRVData('user1');
     fetchAndCacheHRVData('user2');
 });
 
-// Global error handling
+
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
 });
