@@ -1,9 +1,19 @@
+@font-face {
+    font-family: 'Caveat';
+    src: url('caveat.ttf') format('truetype');
+}
+
 body {
     font-family: Arial, sans-serif;
     text-align: center;
     margin: 0;
     padding: 0;
     background-color: #f4f4f4;
+}
+
+h1 {
+    font-family: 'Caveat', cursive;
+    font-size: 60px;
 }
 
 .container {
